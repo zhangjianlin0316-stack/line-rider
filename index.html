@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>线条骑士 Line Rider</title>
+  <meta name="description" content="在浏览器里画线，让雪橇骑士滑下去。支持 4K 渲染、本地存档和示例赛道。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 22c6-1 8-8 14-8 4 0 6 3 10 2' fill='none' stroke='%232a62e8' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M20 8c2 3-1 5-4 6' fill='none' stroke='%23d7263d' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="stage" class="stage" aria-label="线条骑士画布"></canvas>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M3 23c7-1 9-9 16-9 5 0 6 4 10 3" fill="none" stroke="#2a62e8" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M18 7c3 4-1 6-5 7" fill="none" stroke="#d7263d" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h1>线条骑士</h1>
+        <small>LINE RIDER</small>
+      </div>
+    </div>
+
+    <div class="group" role="group" aria-label="播放">
+      <button id="btnPlay" class="primary" type="button">播放</button>
+      <button id="btnPause" type="button">暂停</button>
+      <button id="btnStop" type="button">停止</button>
+    </div>
+
+    <div class="group" role="group" aria-label="速度">
+      <span class="label">速度</span>
+      <button type="button" data-speed="0.25">¼</button>
+      <button type="button" data-speed="0.5">½</button>
+      <button type="button" data-speed="1">1×</button>
+      <button type="button" data-speed="2">2×</button>
+      <button type="button" data-speed="4">4×</button>
+    </div>
+
+    <button id="btnFollow" type="button" aria-pressed="true">镜头跟随</button>
+    <button id="btnGhost" type="button" aria-pressed="false">残影</button>
+
+    <div class="spacer"></div>
+
+    <div class="group" role="group" aria-label="画质">
+      <span class="label">画质</span>
+      <button type="button" data-quality="standard">标准</button>
+      <button type="button" data-quality="hd">高清</button>
+      <button type="button" data-quality="4k">4K</button>
+    </div>
+    <button id="btnExportPng" type="button">导出 4K 截图</button>
+    <button id="btnHelp" type="button">帮助</button>
+  </header>
+
+  <nav class="rail" aria-label="工具">
+    <button type="button" data-tool="pencil" title="铅笔 (B)">
+      <svg viewBox="0 0 24 24"><path d="M4 20l4.2-1.2L19 8.2 15.8 5 5.2 15.6 4 20z"/><path d="M13.8 7l3.2 3.2"/></svg>
+      <span>铅笔</span>
+    </button>
+    <button type="button" data-tool="line" title="直线 (L)">
+      <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/><circle cx="5" cy="19" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="5" r="1.4" fill="currentColor" stroke="none"/></svg>
+      <span>直线</span>
+    </button>
+    <button type="button" data-tool="eraser" title="橡皮 (E)，右键也可擦除">
+      <svg viewBox="0 0 24 24"><path d="M4 15l7-7 6 6-4 4H7L4 15z"/><path d="M14 8l3 3"/></svg>
+      <span>橡皮</span>
+    </button>
+    <button type="button" data-tool="hand" title="抓手 (H)，中键拖拽也可平移">
+      <svg viewBox="0 0 24 24"><path d="M8 11V6.5a1.5 1.5 0 0 1 3 0V11"/><path d="M11 10.5V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M14 11V7.5a1.5 1.5 0 0 1 3 0V13c0 4-2 7-6 7h-1c-3 0-5-2-5-5v-4"/></svg>
+      <span>抓手</span>
+    </button>
+    <button type="button" data-tool="flag" title="起点 (F)，滚轮旋转方向">
+      <svg viewBox="0 0 24 24"><path d="M6 21V4"/><path d="M6 5h9l-1.8 3L15 11H6"/></svg>
+      <span>起点</span>
+    </button>
+    <div class="sep"></div>
+    <button type="button" data-color="normal" title="普通线 (1)">
+      <i class="swatch normal"></i><span>普通</span>
+    </button>
+    <button type="button" data-color="accel" title="加速线 (2)">
+      <i class="swatch accel"></i><span>加速</span>
+    </button>
+    <button type="button" data-color="scenery" title="风景线 (3)">
+      <i class="swatch scenery"></i><span>风景</span>
+    </button>
+    <div class="sep"></div>
+    <button id="btnUndo" type="button" title="撤销 (Ctrl+Z)">
+      <svg viewBox="0 0 24 24"><path d="M8 8H4v4"/><path d="M4 12a8 8 0 1 0 2.2-5.5L4 8"/></svg>
+      <span>撤销</span>
+    </button>
+    <button id="btnRedo" type="button" title="重做 (Ctrl+Shift+Z)">
+      <svg viewBox="0 0 24 24"><path d="M16 8h4v4"/><path d="M20 12a8 8 0 1 1-2.2-5.5L20 8"/></svg>
+      <span>重做</span>
+    </button>
+    <button id="btnClear" type="button" title="清空线条">
+      <svg viewBox="0 0 24 24"><path d="M5 7h14"/><path d="M9 7V5h6v2"/><path d="M8 7l1 13h6l1-13"/></svg>
+      <span>清空</span>
+    </button>
+    <div class="sep"></div>
+    <button id="btnZoomIn" type="button" title="放大">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4M11 8v6M8 11h6"/></svg>
+      <span>放大</span>
+    </button>
+    <button id="btnZoomOut" type="button" title="缩小">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4M8 11h6"/></svg>
+      <span>缩小</span>
+    </button>
+    <button id="btnHome" type="button" title="回到起点">
+      <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M7 10v9h10v-9"/></svg>
+      <span>起点</span>
+    </button>
+  </nav>
+
+  <footer class="bottombar">
+    <div class="group" role="group" aria-label="示例赛道">
+      <span class="label">示例</span>
+      <button type="button" data-sample="snow">缓坡初雪</button>
+      <button type="button" data-sample="valley">月牙冰谷</button>
+      <button type="button" data-sample="flame">赤焰飞跃</button>
+    </div>
+    <div class="group">
+      <button id="btnSave" type="button">保存</button>
+      <button id="btnLoad" type="button">读取</button>
+      <button id="btnExportJson" type="button">导出</button>
+      <button id="btnImport" type="button">导入</button>
+    </div>
+    <div class="spacer"></div>
+    <div id="statusText" class="status">准备</div>
+    <div id="statusMeta" class="meta"></div>
+  </footer>
+
+  <div id="toast" class="toast" hidden></div>
+  <input id="fileInput" type="file" accept="application/json,.json" hidden>
+
+  <dialog id="saveDialog">
+    <form class="dialog" method="dialog">
+      <h2>保存赛道</h2>
+      <p>存在这台浏览器里，刷新后还在。也可以用「导出」存成 JSON 文件。</p>
+      <input id="saveName" name="name" maxlength="40" aria-label="赛道名称" required>
+      <div class="row">
+        <button value="cancel" type="submit">取消</button>
+        <button value="ok" class="primary" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="loadDialog">
+    <div class="dialog">
+      <h2>读取赛道</h2>
+      <div id="saveList"></div>
+      <div class="row">
+        <button type="button" id="btnCloseLoad">关闭</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="helpDialog">
+    <div class="dialog">
+      <h2>怎么玩</h2>
+      <p>用铅笔画线，按空格或「播放」。蓝线能骑，红线会加速，绿线只是风景。骑得太平或者一头撞上线，他就会从雪橇上摔下去。</p>
+      <table class="help-table">
+        <tr><td>B / L / E / H / F</td><td>铅笔、直线、橡皮、抓手、起点</td></tr>
+        <tr><td>1 / 2 / 3</td><td>普通线、加速线、风景线</td></tr>
+        <tr><td>空格</td><td>播放或暂停。按住空格再拖动可以平移</td></tr>
+        <tr><td>Esc</td><td>停止并回到起点</td></tr>
+        <tr><td>滚轮</td><td>缩放。起点工具下改为旋转出发方向</td></tr>
+        <tr><td>Shift</td><td>画直线时保持水平或垂直</td></tr>
+        <tr><td>[ / ]</td><td>慢放 / 快进</td></tr>
+        <tr><td>C / G</td><td>镜头跟随 / 残影</td></tr>
+        <tr><td>Ctrl+Z / Ctrl+Y</td><td>撤销 / 重做</td></tr>
+      </table>
+      <div class="row">
+        <button type="button" id="btnCloseHelp" class="primary">知道了</button>
+      </div>
+    </div>
+  </dialog>
+
+  <noscript><p style="padding:24px">需要启用 JavaScript 才能玩线条骑士。</p></noscript>
+  <script type="module" src="js/main.js"></script>
+  <script>
+    document.getElementById("btnCloseLoad").addEventListener("click", () => document.getElementById("loadDialog").close());
+    document.getElementById("btnCloseHelp").addEventListener("click", () => document.getElementById("helpDialog").close());
+  </script>
+</body>
+</html>

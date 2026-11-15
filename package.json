@@ -1,0 +1,6 @@
+{
+  "name": "line-rider",
+  "private": true,
+  "type": "module",
+  "description": "线条骑士 — a browser Line Rider remake"
+}
